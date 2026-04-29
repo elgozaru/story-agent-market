@@ -1,0 +1,38 @@
+{
+  "name": "story-agent-market",
+  "version": "1.0.0",
+  "private": "true",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "agent": "pnpm --filter agent dev",
+    "api": "pnpm --filter api dev",
+    "sandbox": "pnpm --filter social-sandbox dev",
+    "check-types": "tsc --noEmit"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.2",
+  "devDependencies": {
+    "dotenv": "latest",
+    "tsx": "latest",
+    "turbo": "latest",
+    "typescript": "latest",
+    "zod": "latest"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.0",
+    "@x402/core": "^2.11.0",
+    "@x402/evm": "^2.11.0",
+    "@x402/hono": "^2.11.0",
+    "hono": "^4.12.15",
+    "viem": "^2.48.4"
+  }
+}
