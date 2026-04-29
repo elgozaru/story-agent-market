@@ -9,8 +9,9 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "agent": "pnpm --filter agent dev",
-    "api": "pnpm --filter api dev",
-    "sandbox": "pnpm --filter social-sandbox dev",
+    "api": "pnpm --filter @story/api dev",
+    "sandbox": "pnpm --filter @story/social-sandbox dev",
+    "dev:backend": "pnpm --parallel --filter @story/api --filter @story/social-sandbox dev",
     "check-types": "tsc --noEmit"
   },
   "workspaces": [
