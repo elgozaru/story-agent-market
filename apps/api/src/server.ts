@@ -5,11 +5,13 @@ import { serve } from "@hono/node-server";
 import { z } from "zod";
 
 import {
+  Bytes32Schema,
   HexAddressSchema,
   SocialPostSchema,
   TeaserGenerationRequestSchema
 } from "@story/shared";
 
+import { CampaignRegistryAbi } from "./abis/CampaignRegistryAbi";
 import { generateTeasersWith0G } from "@story/og";
 import { KeeperHubClient } from "@story/keeperhub";
 
@@ -128,31 +130,62 @@ app.post("/social/publish-sandbox", async (c) => {
   }
 });
 
+
+const UintStringSchema = z
+  .union([z.number().int().nonnegative(), z.string().regex(/^\d+$/)])
+  .transform((value) => value.toString());
+
+const CampaignInputSchema = z.object({
+  agentId: UintStringSchema,
+  author: HexAddressSchema,
+  payTo: HexAddressSchema,
+  contentRootHash: Bytes32Schema,
+  rightsPolicyHash: Bytes32Schema,
+  agentPolicyHash: Bytes32Schema,
+  teaserURI: z.string().min(1),
+  priceMicrosUsd: UintStringSchema,
+  deadline: UintStringSchema,
+  nonce: UintStringSchema
+});
+
 const RegisterCampaignViaKeeperHubSchema = z.object({
-  network: z.string().min(1).default(process.env.KEEPERHUB_NETWORK ?? "base-sepolia"),
-  contractAddress: HexAddressSchema,
-  abi: z.array(z.unknown()).default([]),
-  campaignInput: z.unknown(),
+  network: z
+    .string()
+    .min(1)
+    .default(process.env.KEEPERHUB_NETWORK ?? "base-sepolia"),
+  contractAddress: HexAddressSchema.default(
+    process.env.KYMACAST_CAMPAIGN_REGISTRY_ADDRESS ?? "0x0000000000000000000000000000000000000000"
+  ),
+  campaignInput: CampaignInputSchema,
   authorSignature: z.string().regex(/^0x[a-fA-F0-9]+$/)
 });
 
-/**
- * KeeperHub-backed campaign registration.
- *
- * Expected Solidity shape:
- *   createCampaignWithSig(CampaignInput campaignInput, bytes authorSignature)
- *
- * Local mode:
- *   KEEPERHUB_MOCK=true
- *
- * Real mode:
- *   KEEPERHUB_API_BASE=https://app.keeperhub.com/api
- *   KEEPERHUB_API_KEY=...
- */
+function campaignInputToAbiTuple(
+  input: z.infer<typeof CampaignInputSchema>
+): unknown[] {
+  return [
+    input.agentId,
+    input.author,
+    input.payTo,
+    input.contentRootHash,
+    input.rightsPolicyHash,
+    input.agentPolicyHash,
+    input.teaserURI,
+    input.priceMicrosUsd,
+    input.deadline,
+    input.nonce
+  ];
+}
+
 app.post("/campaign/register-via-keeperhub", async (c) => {
   try {
     const body = await c.req.json();
     const input = RegisterCampaignViaKeeperHubSchema.parse(body);
+
+    const functionArgs = [
+      campaignInputToAbiTuple(input.campaignInput),
+      input.authorSignature
+    ];
 
     if (process.env.KEEPERHUB_MOCK === "true") {
       return c.json({
@@ -160,6 +193,13 @@ app.post("/campaign/register-via-keeperhub", async (c) => {
         sponsor: "KeeperHub",
         step: "campaign_registration_submitted",
         mock: true,
+        keeperhubRequest: {
+          network: input.network,
+          contractAddress: input.contractAddress,
+          functionName: "createCampaignWithSig",
+          functionArgs,
+          abi: CampaignRegistryAbi
+        },
         execution: {
           executionId: `mock-exec-${crypto.randomUUID()}`,
           status: "completed",
@@ -175,8 +215,8 @@ app.post("/campaign/register-via-keeperhub", async (c) => {
       network: input.network,
       contractAddress: input.contractAddress,
       functionName: "createCampaignWithSig",
-      functionArgs: [input.campaignInput, input.authorSignature],
-      abi: input.abi,
+      functionArgs,
+      abi: [...CampaignRegistryAbi],
       gasLimitMultiplier: "1.2"
     });
 
