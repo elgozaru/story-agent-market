@@ -1,0 +1,12 @@
+{
+  "name": "@story/ens",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "viem": "^2.23.0"
+  }
+}
+

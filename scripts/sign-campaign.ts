@@ -27,52 +27,59 @@ const campaignInput = {
   nonce: 0n
 };
 
-const signature = await account.signTypedData({
-  domain: {
-    name: "CampaignRegistry",
-    version: "1",
-    chainId,
-    verifyingContract: campaignRegistry
-  },
-  types: {
-    CampaignInput: [
-      { name: "agentId", type: "uint256" },
-      { name: "author", type: "address" },
-      { name: "payTo", type: "address" },
-      { name: "contentRootHash", type: "bytes32" },
-      { name: "rightsPolicyHash", type: "bytes32" },
-      { name: "agentPolicyHash", type: "bytes32" },
-      { name: "teaserURI", type: "string" },
-      { name: "priceMicrosUsd", type: "uint256" },
-      { name: "deadline", type: "uint256" },
-      { name: "nonce", type: "uint256" }
-    ]
-  },
-  primaryType: "CampaignInput",
-  message: campaignInput
-});
+async function signCampaign() {
 
-const jsonReadyInput = {
-  agentId: campaignInput.agentId.toString(),
-  author: campaignInput.author,
-  payTo: campaignInput.payTo,
-  contentRootHash: campaignInput.contentRootHash,
-  rightsPolicyHash: campaignInput.rightsPolicyHash,
-  agentPolicyHash: campaignInput.agentPolicyHash,
-  teaserURI: campaignInput.teaserURI,
-  priceMicrosUsd: campaignInput.priceMicrosUsd.toString(),
-  deadline: campaignInput.deadline.toString(),
-  nonce: campaignInput.nonce.toString()
-};
-
-console.log(
-  JSON.stringify(
-    {
-      campaignInput: jsonReadyInput,
-      authorSignature: signature
+  const signature = await account.signTypedData({
+    domain: {
+      name: "CampaignRegistry",
+      version: "1",
+      chainId,
+      verifyingContract: campaignRegistry
     },
-    null,
-    2
-  )
-);
+    types: {
+      CampaignInput: [
+        { name: "agentId", type: "uint256" },
+        { name: "author", type: "address" },
+        { name: "payTo", type: "address" },
+        { name: "contentRootHash", type: "bytes32" },
+        { name: "rightsPolicyHash", type: "bytes32" },
+        { name: "agentPolicyHash", type: "bytes32" },
+        { name: "teaserURI", type: "string" },
+        { name: "priceMicrosUsd", type: "uint256" },
+        { name: "deadline", type: "uint256" },
+        { name: "nonce", type: "uint256" }
+      ]
+    },
+    primaryType: "CampaignInput",
+    message: campaignInput
+  });
 
+  const jsonReadyInput = {
+    agentId: campaignInput.agentId.toString(),
+    author: campaignInput.author,
+    payTo: campaignInput.payTo,
+    contentRootHash: campaignInput.contentRootHash,
+    rightsPolicyHash: campaignInput.rightsPolicyHash,
+    agentPolicyHash: campaignInput.agentPolicyHash,
+    teaserURI: campaignInput.teaserURI,
+    priceMicrosUsd: campaignInput.priceMicrosUsd.toString(),
+    deadline: campaignInput.deadline.toString(),
+    nonce: campaignInput.nonce.toString()
+  };
+
+  console.log(
+    JSON.stringify(
+      {
+        campaignInput: jsonReadyInput,
+        authorSignature: signature
+      },
+      null,
+      2
+    )
+  );
+}
+
+signCampaign().catch((error) => {
+  console.error("Error signing campaign:", error);
+  process.exit(1);
+});

@@ -15,6 +15,12 @@ import { CampaignRegistryAbi } from "./abis/CampaignRegistryAbi";
 import { generateTeasersWith0G } from "@story/og";
 import { KeeperHubClient } from "@story/keeperhub";
 
+import {
+  buildAgentIdentityTextRecords,
+  createEnsPublicClient,
+  resolveAgentIdentity
+} from "@story/ens";
+
 const app = new Hono();
 
 app.use(
@@ -135,6 +141,29 @@ const UintStringSchema = z
   .union([z.number().int().nonnegative(), z.string().regex(/^\d+$/)])
   .transform((value) => value.toString());
 
+
+const BuildEnsRecordsSchema = z.object({
+  ensName: z.string().min(3),
+  agentAddress: HexAddressSchema,
+  agentRegistryAddress: HexAddressSchema.default(
+    process.env.KYMACAST_AGENT_REGISTRY_ADDRESS ??
+      "0x0000000000000000000000000000000000000000"
+  ),
+  agentRegistryInteroperableAddress: z.string().optional(),
+  agentId: z.union([z.string(), z.number(), z.bigint()]).default("0"),
+  campaignRegistryAddress: HexAddressSchema.default(
+    process.env.KYMACAST_CAMPAIGN_REGISTRY_ADDRESS ??
+      "0x0000000000000000000000000000000000000000"
+  ),
+  campaignId: z.union([z.string(), z.number(), z.bigint()]).optional(),
+  manifestUri: z.string().min(1),
+  zeroGStorageUri: z.string().optional(),
+  zeroGContentRootHash: Bytes32Schema.optional(),
+  x402UnlockEndpoint: z.string().optional(),
+  keeperHubExecutionId: z.string().optional(),
+  socialProfileUrl: z.string().optional()
+});
+
 const CampaignInputSchema = z.object({
   agentId: UintStringSchema,
   author: HexAddressSchema,
@@ -226,6 +255,82 @@ app.post("/campaign/register-via-keeperhub", async (c) => {
       step: "campaign_registration_submitted",
       mock: false,
       execution
+    });
+  } catch (error) {
+    return jsonError(c, error, 400);
+  }
+});
+
+app.post("/identity/build-records", async (c) => {
+  try {
+    const body = await c.req.json();
+    const input = BuildEnsRecordsSchema.parse(body);
+
+    const records = buildAgentIdentityTextRecords({
+      ensName: input.ensName,
+      agentAddress: input.agentAddress,
+      agentRegistryAddress: input.agentRegistryAddress,
+      agentRegistryInteroperableAddress:
+        input.agentRegistryInteroperableAddress ??
+        process.env.KYMACAST_AGENT_REGISTRY_INTEROPERABLE_ADDRESS,
+      agentId: input.agentId,
+      campaignRegistryAddress: input.campaignRegistryAddress,
+      campaignId: input.campaignId,
+      manifestUri: input.manifestUri,
+      zeroGStorageUri: input.zeroGStorageUri,
+      zeroGContentRootHash: input.zeroGContentRootHash,
+      x402UnlockEndpoint: input.x402UnlockEndpoint,
+      keeperHubExecutionId: input.keeperHubExecutionId,
+      socialProfileUrl: input.socialProfileUrl
+    });
+
+    return c.json({
+      ok: true,
+      sponsor: "ENS",
+      step: "identity_records_built",
+      ensName: input.ensName,
+      records
+    });
+  } catch (error) {
+    return jsonError(c, error, 400);
+  }
+});
+
+app.get("/identity/resolve/:ensName", async (c) => {
+  try {
+    const ensName = c.req.param("ensName");
+
+    const agentRegistryAddress =
+      c.req.query("agentRegistryAddress") ??
+      process.env.KYMACAST_AGENT_REGISTRY_ADDRESS;
+
+    const agentId = c.req.query("agentId") ?? process.env.KYMACAST_AGENT_ID ?? "0";
+
+    if (!agentRegistryAddress) {
+      throw new Error(
+        "Missing agentRegistryAddress query param or KYMACAST_AGENT_REGISTRY_ADDRESS env var"
+      );
+    }
+
+    const publicClient = createEnsPublicClient({
+      chainId: Number(process.env.ENS_CHAIN_ID ?? 11155111) as 11155111,
+      rpcUrl: process.env.ENS_RPC_URL
+    });
+
+    const identity = await resolveAgentIdentity({
+      publicClient,
+      ensName,
+      agentRegistryAddress: agentRegistryAddress as `0x${string}`,
+      agentRegistryInteroperableAddress:
+        process.env.KYMACAST_AGENT_REGISTRY_INTEROPERABLE_ADDRESS,
+      agentId
+    });
+
+    return c.json({
+      ok: true,
+      sponsor: "ENS",
+      step: "identity_resolved",
+      identity
     });
   } catch (error) {
     return jsonError(c, error, 400);

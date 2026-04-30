@@ -48,6 +48,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.13.8
         version: 1.19.14(hono@4.12.15)
+      '@story/ens':
+        specifier: workspace:*
+        version: link:../../packages/ens
       '@story/keeperhub':
         specifier: workspace:*
         version: link:../../packages/keeperhub
@@ -123,6 +126,12 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+
+  packages/ens:
+    dependencies:
+      viem:
+        specifier: ^2.23.0
+        version: 2.48.4(typescript@6.0.3)(zod@4.3.6)
 
   packages/keeperhub:
     dependencies:
@@ -2880,7 +2889,7 @@ snapshots:
 
   '@scure/bip32@1.7.0':
     dependencies:
-      '@noble/curves': 1.9.1
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
